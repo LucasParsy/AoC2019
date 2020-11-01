@@ -6,6 +6,7 @@ import sys
 from dataclasses import dataclass
 from typing import List, NamedTuple
 import turtle
+import turtle_mode
 
 from intcode import Machine
 
@@ -33,11 +34,7 @@ class MazeGame:
     droid_pos: Point
     oxy_pos: Point
 
-    keys: List[str]
     directions: List[Point]
-    screen: turtle.Screen
-    canvas: turtle.ScrolledCanvas
-    display_mul: int
     operating: bool
 
     intersections: List[Point]
@@ -54,12 +51,15 @@ class MazeGame:
         out = self.mac.run()
         self.gsx = out.index(ord("\n"))
         self.gsy = int(len(out) / self.gsx)
+        #print map
+        for i in out:
+            print(chr(i), end="")
+
         self.map = [i for i in out if i != ord('\n')]
 
         ind_droid = self.map.index(ord('^'))
         self.droid_pos = Point(ind_droid % self.gsx, int(ind_droid / self.gsx))
 
-        self.keys = ["Down", "Up", "Left", "Right"]
         self.directions = [Point(0, -1), Point(0, 1), Point(-1, 0), Point(1, 0)]
 
         self.operating = False
@@ -67,20 +67,10 @@ class MazeGame:
         self.solutions = []
         self.intersections = []
         self.max_iter = 0
+        #self.turtle_init()
 
-    def set_turtle_pos(self, pos: Point):
-        turtle.setpos((pos.x - self.gsx / 2) * self.display_mul,
-                      (pos.y - self.gsy / 2) * self.display_mul)
-
-    def draw_rectangle(self, pos: Point, col, ratio: int):
-        bx = pos.x - self.gsx / 2
-        by = -pos.y + self.gsx / 2
-        self.canvas.create_rectangle((bx - ratio) * self.display_mul, (by - ratio) * self.display_mul,
-                                     (bx + ratio) * self.display_mul, (by + ratio) * self.display_mul, fill=col)
-
-    def display_victory(self) -> int:
-        print("O2 machine found!")
-
+  
+        
     def move(self, direction: int):
         if self.operating:
             return
@@ -107,24 +97,6 @@ class MazeGame:
             self.droid_pos = npos
         self.operating = False
         return out
-
-    def play_maze_manual(self):
-        for i in range(0, len(self.keys)):
-            self.screen.onkey(lambda i=i: self.move(i), self.keys[i])
-        self.screen.listen()
-        self.screen.mainloop()
-
-    def play_maze_color_p2(self, iteration: int, dir: int):
-        res = self.move(dir)
-        if res == 0:
-            return
-        self.max_iter = max(iteration, self.max_iter)
-
-        for i in range(0, 4):
-            if i == self.backtrack[dir]:
-                continue
-            self.play_maze_color_p2(iteration + 1, i)
-        self.move(self.backtrack[dir])
 
     def play_maze_auto(self, iteration: int, dir: int) -> bool:
         res = self.move(dir)
@@ -173,17 +145,10 @@ def main(lines: List[str]):
     for elem in maze.intersections:
         s += elem.x * elem.y
     print(s)
-    exit()
+    t = turtle_mode.Turtle_mode(maze.gsx, maze.gsy)
+    t.play_maze_manual(maze.map)
+    #exit()
     # maze.play_maze_manual()
-    # turtle.tracer(0, 0)
-
-    for i in range(0, 4):
-        maze.play_maze_auto(0, i)
-
-    print(maze.max_iter)
-    turtle.update()
-    maze.screen.mainloop()
-
 
 def print_input(lines: List[str]):
     print("-----BEGIN INPUT-----", file=sys.stderr)
