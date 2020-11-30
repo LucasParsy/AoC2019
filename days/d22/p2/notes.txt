@@ -1,0 +1,206 @@
+jour 22 partie 2:
+
+1ere étape: trouver rapidement 
+    shuffle(posInitiale) = nouvellePos
+également trouver pour lasolution son inverse,
+    invShuffle(nouvellePos) = positionInitiale
+
+pas besoin évidemment de mélanger un deck entier:
+sur le shuffle, à chaque étape:
+    pour le cut:
+        posInitiale -= cutVal
+    pour le reverse:
+        posinitiale = -posinitiale + numcards - 1
+    pour le increment:
+        posinitiale *= incVal
+
+
+pour le invShuffle:
+    on suit les étapes dans le sens inverse, et on les inverse.
+    cut: += cutVal.
+    increment: division avec un modulo: comment on fait?
+        trouvé une solution temporaire qui boucle sur toutes les possibilités.
+        ça marche un peu pour l'instant...
+
+là je suis bloqué: même si j'arrive à faire le invShuffle 1 fois, 
+je ne sais pas le faire 1000 milliards de fois.
+je cherche de l'aide sur https://codeforces.com/blog/entry/72593
+
+il fournit un lien sur l'aritméthique modulaire:
+on découvre que si on fait le modulo avec des nombres premiers (ce qui est le cas ici), 
+la division modulaire est plus simple.
+
+modular multiplicative inverse: 
+    (a / b) % m == (a * pow(b, m -2)) % m
+
+pow avec modulo: méthode optimisée qui existe,
+de base en python avec pow(a,b, m)
+
+donc
+    (a / b) % m == (a %m * pow(b, m -2,m)) % m
+
+
+ça nous avance toujours pas, on est toujours bloqué sur comment faire
+le invShuffle plein de fois.
+solution: se concentrer plutot sur le shuffle normal.
+
+on se rend compte que chaque opération est avec une addition, une multiplication, ou les 2.
+donc c'est des fonctions sous forme ax+b
+
+si on les fait à la suite ça donne:
+
+n1 = a*x  + b
+n2 = c*n1 + b
+n2 = c * (a*x + b) + d
+n2 = c*a*x + c*b + d
+
+chaque opération peut être % numCartes (sinon les nombres deviennennt vite très grands)
+
+donc au final: suite de la forme ax+b = suite aritméthico-géométrique.
+(suite aritméthique -> x+b, géométrique: a*x)
+
+https://fr.wikipedia.org/wiki/Suite_arithm%C3%A9tico-g%C3%A9om%C3%A9trique
+
+formule:
+pour la suite a*x + b,
+    r = (b / (1- a))
+
+pour tout n le nombre de shuffles,
+Un0 = position initiale de la numCartes
+Un = position de la carte après n shuffles
+on a:
+    Un = a^n * (Un0 - r) + r
+
+donc on peut obtenir Un en ayant Un0, la position initiale.
+On veut l'inverse, obtenir Un0 en ayant Un (ici 2020, la position finale)
+
+on inverse l'opération:
+si 
+    Un = a^n * (Un0 - r) + r
+    Un -r = a^n * (Un0 - r)
+    Un -r = a^n * Un0 - a^n * r
+    (Un - r + (a^n * r)) / (a ^ n) = Un0
+
+Calcul intéressant, mais quand on développe r, c'est le bordel.
+    (Un - (b / (1- a)) + (a^n * (b / (1- a)))) / (a ^ n) = Un0
+
+
+Quand on essaie de faire le calcul, 
+il y a des divisions modulaires avec des fractions c'est le bordel.
+Python n'arrive pas à gérer des nombres gigantesques et perd en précision, c'est le drame.
+
+Donc je triche et je re-regarde la solution, d'abord sans comprendre, puis me rendant compte.
+il y a possibilité de simplifier l'équation.
+En réalité la page Wikipédia anglaise décrit le principe d'une 
+suite aritméthico-géométrique... mais sous un autre nom, et une autre forme!
+ce sont des "Infinite geometric series"
+https://en.wikipedia.org/wiki/Geometric_progression#Geometric_series
+
+donc si on reprend la formule pour obtenir la position d'une carte après n shuffles,
+
+    Un = a^n * (Un0 - r) + r
+    Un = a^n * Un0  - (a^n * r) + r
+    Un = a^n * Un0 - (r * (a^n - 1))
+    Un = a^n * Un0 - ((b / (1- a)) * (a^n - 1))               rappel:     r = (b / (1- a))
+    Un = a^n * Un0 - ((b * (a^n - 1)) / (1- a))
+
+
+ainsi:
+
+    Un0 =  (Un + ((b * (a^n - 1)) / (1- a))) / a^n
+
+et là c'est bon, plus qu'à mettre des modulos partout, mais ça marche.
+
+----------------------------------------------------------------------------
+----------------------------------------------------------------------------
+
+deal with increment 7
+deal with increment 9
+cut -2
+Result: 6 3 0 7 4 1 8 5 2 9
+
+index 6: res 8
+
+6 - 2 = 4
+4 * 9 = 36 . 10 - 6 = 4
+4 * 7 = 28 . 10 - 1 = 2
+2 != 8
+
+
+départ valeur 8: index 8
+8*7 = 56: index 6
+6*9 = 54: index 4
+4+2= 6 : index 6
+res: valeur 8 : index 6
+
+
+départ valeur 7 : index 7
+7*7 = 49: index 9
+1*9 = 9: index 1
+1+2= 3 : index 6
+res: valeur 7 : index 3
+
+
+3 - 2 = 1
+1 * 9 = 9
+9 * 7 = 63 : 3
+----------------------------
+
+deal with increment 7
+deal into new stack
+deal into new stack
+Result: 0 3 6 9 2 5 8 1 4 7
+
+
+départ valeur 4: ind 4
+
+4*7 = 28 -> ind 8
+8 * 9 = 72 -> ind 2 
+2 + 2 = 4
+valeur 4 ind 4
+
+
+ind 4
+4 - 2 = 2
+2* 9 = 18 -> 8
+8 * 7 = 56
+
+ind 4 val 6. mais WTF
+
+--
+
+départ valeur 3: ind 3
+3*7 = 21 -> ind 1
+valeur 3 ind 1
+
+
+1 * 7 = 7
+ind 1 val 7. mais WTF
+
+
+
+-----------------------------
+
+cut 6
+deal with increment 7
+deal into new stack
+Result: 3 0 7 4 1 8 5 2 9 6
+
+val 0 pos 0:
+0-6 = -4 -> 4 
+4*7 = 28 -> 8
+10-1-8 = 1
+
+index 1:
+10-1-1 = 8
+8*7=56 = 6
+6+6 = 12 -> 2 
+index 1, val 2
+erreur, val 0
+
+or
+
+10-1-1 = 8
+8*7=56 = 10 - 6 -> 4 
+4+6 = 10 -> 0 
+index 1, val 0, OK
